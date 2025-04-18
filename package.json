@@ -1,0 +1,61 @@
+{
+  "name": "python-test-switcher",
+  "author": {
+    "name": "Alex White",
+    "email": "aaapwww@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/awhite/python-test-switcher"
+  },
+  "displayName": "Python Test Switcher",
+  "description": "Switch between Python files and their corresponding test files",
+  "version": "0.1.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "python-test-switcher.toggleTestAndImplementation",
+        "title": "Python Test Switcher: Switch File"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "python-test-switcher.toggleTestAndImplementation",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+alt+t",
+        "when": "editorLangId == python"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.14.1",
+    "@types/sinon": "^17.0.4",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2",
+    "glob": "^11.0.1",
+    "mocha": "^11.1.0",
+    "prettier": "^3.5.3",
+    "sinon": "^20.0.0",
+    "typescript": "^5.3.3"
+  }
+}
