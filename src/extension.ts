@@ -4,6 +4,18 @@ import { PathService } from './services/pathService';
 import { TestService } from './services/testService';
 import { TestType } from './types';
 
+async function openOrFocusDocument(filePath: string): Promise<void> {
+  const openEditors = vscode.window.visibleTextEditors;
+  const existingEditor = openEditors.find(editor => editor.document.uri.fsPath === filePath);
+
+  if (existingEditor) {
+    await vscode.window.showTextDocument(existingEditor.document, { viewColumn: existingEditor.viewColumn });
+  } else {
+    const doc = await vscode.workspace.openTextDocument(filePath);
+    await vscode.window.showTextDocument(doc);
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const fileSystem = new NodeFileSystem();
   const pathService = new PathService(fileSystem);
@@ -64,8 +76,7 @@ async function handleTestFile(currentFilePath: string, projectRoot: string, path
     return;
   }
 
-  const doc = await vscode.workspace.openTextDocument(implementationPath);
-  await vscode.window.showTextDocument(doc);
+  await openOrFocusDocument(implementationPath);
 }
 
 async function handleImplementationFile(
@@ -85,12 +96,10 @@ async function handleImplementationFile(
     if (choice) {
       const selectedType = testTypes.find((type) => testService.getTestTypeDisplay(type) === choice) as TestType;
       const testPath = await testService.createTestFile(projectRoot, currentFilePath, selectedType);
-      const doc = await vscode.workspace.openTextDocument(testPath);
-      await vscode.window.showTextDocument(doc);
+      await openOrFocusDocument(testPath);
     }
   } else if (testFiles.length === 1) {
-    const doc = await vscode.workspace.openTextDocument(testFiles[0].path);
-    await vscode.window.showTextDocument(doc);
+    await openOrFocusDocument(testFiles[0].path);
   } else {
     const choice = await vscode.window.showQuickPick(
       testFiles.map((f) => testService.getTestTypeDisplay(f.type)),
@@ -100,8 +109,7 @@ async function handleImplementationFile(
     if (choice) {
       const testFile = testFiles.find((f) => testService.getTestTypeDisplay(f.type) === choice);
       if (testFile) {
-        const doc = await vscode.workspace.openTextDocument(testFile.path);
-        await vscode.window.showTextDocument(doc);
+        await openOrFocusDocument(testFile.path);
       }
     }
   }

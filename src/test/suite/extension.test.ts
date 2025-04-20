@@ -2,17 +2,13 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as os from 'os';
-import * as sinon from 'sinon';
-
-interface TestWorkspace {
-  root: string;
-  implementationDir: string;
-  testDirs: {
-    unit: string;
-    integration: string;
-  };
-}
+import {
+  cleanupWorkspace,
+  createImplementationFile,
+  createIntegrationTestFile,
+  createUnitTestFile,
+  setupTestWorkspace,
+} from '../util/test-workspace';
 
 suite('Extension Test Suite', () => {
   vscode.window.showInformationMessage('Start all tests.');
@@ -212,6 +208,68 @@ suite('Extension Test Suite', () => {
       await cleanupWorkspace(workspace);
     }
   });
+  test('Should focus existing editor instead of opening duplicate', async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
+    const workspace = await setupTestWorkspace();
+    try {
+      const implementationFile = await createImplementationFile(workspace, 'implementation_file');
+      const unitTestFile = await createUnitTestFile(workspace, 'implementation_file');
+
+      // Open both files in different editors
+      const implementationDoc = await vscode.workspace.openTextDocument(implementationFile);
+      const testDoc = await vscode.workspace.openTextDocument(unitTestFile);
+
+      // Open implementation in first editor group
+      await vscode.window.showTextDocument(implementationDoc, { viewColumn: vscode.ViewColumn.One });
+
+      // Open test in second editor group
+      await vscode.window.showTextDocument(testDoc, { viewColumn: vscode.ViewColumn.Two });
+
+      // Verify we have two editors open
+      const editors = vscode.window.visibleTextEditors;
+      assert.strictEqual(editors.length, 2, 'Should have two editors open');
+
+      // Toggle from test to implementation
+      await vscode.commands.executeCommand('python-test-switcher.toggleTestAndImplementation');
+
+      // Verify editor layout and focus after toggle
+      const editorsAfterToggle = vscode.window.visibleTextEditors;
+      assert.strictEqual(editorsAfterToggle.length, 2, 'Should still have two editors open');
+
+      // Verify left editor is implementation file
+      const leftEditor = editorsAfterToggle.find(e => e.viewColumn === vscode.ViewColumn.One);
+      assert.ok(leftEditor, 'Should have an editor in the left column');
+      assert.strictEqual(
+        leftEditor.document.uri.fsPath,
+        implementationFile,
+        'Left editor should be the implementation file'
+      );
+
+      // Verify right editor is test file
+      const rightEditor = editorsAfterToggle.find(e => e.viewColumn === vscode.ViewColumn.Two);
+      assert.ok(rightEditor, 'Should have an editor in the right column');
+      assert.strictEqual(
+        rightEditor.document.uri.fsPath,
+        unitTestFile,
+        'Right editor should be the test file'
+      );
+
+      // Verify left editor (implementation) is focused
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.viewColumn,
+        vscode.ViewColumn.One,
+        'Left editor should be focused'
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.uri.fsPath,
+        implementationFile,
+        'Focused editor should be the implementation file'
+      );
+    } finally {
+      await cleanupWorkspace(workspace);
+    }
+  });
 });
 
 async function withMockedQuickPick<T extends string>(mockValue: T, callback: () => Promise<void>): Promise<void> {
@@ -236,61 +294,8 @@ async function withMockedQuickPick<T extends string>(mockValue: T, callback: () 
   }
 }
 
-async function setupTestWorkspace(): Promise<TestWorkspace> {
-  const homeDir = os.homedir();
-  const switcherDir = path.join(homeDir, '.python-test-switcher');
-  await fs.promises.mkdir(switcherDir, { recursive: true });
-
-  const tempWorkspaceDir = path.join(switcherDir, 'temp_workspace');
-  await fs.promises.mkdir(tempWorkspaceDir, { recursive: true });
-
-  // Create pyproject.toml
-  const pyprojectPath = path.join(tempWorkspaceDir, 'pyproject.toml');
-  await fs.promises.writeFile(pyprojectPath, '[tool.pytest]');
-
-  // Setup directory structure
-  const implementationDir = path.join(tempWorkspaceDir, 'src');
-  const unitTestDir = path.join(tempWorkspaceDir, 'tests', 'unit', 'src');
-  const integrationTestDir = path.join(tempWorkspaceDir, 'tests', 'integration', 'src');
-
-  await fs.promises.mkdir(implementationDir, { recursive: true });
-  await fs.promises.mkdir(unitTestDir, { recursive: true });
-  await fs.promises.mkdir(integrationTestDir, { recursive: true });
-
-  return {
-    root: tempWorkspaceDir,
-    implementationDir,
-    testDirs: {
-      unit: unitTestDir,
-      integration: integrationTestDir,
-    },
-  };
-}
-
-async function createImplementationFile(workspace: TestWorkspace, baseFileName: string): Promise<string> {
-  const implementationFile = path.join(workspace.implementationDir, `${baseFileName}.py`);
-  await fs.promises.writeFile(implementationFile, 'def test_function(): pass');
-  return implementationFile;
-}
-
-async function createUnitTestFile(workspace: TestWorkspace, baseFileName: string): Promise<string> {
-  const unitTestFile = path.join(workspace.testDirs.unit, `test_${baseFileName}.py`);
-  await fs.promises.writeFile(unitTestFile, 'def test_test_function(): pass');
-  return unitTestFile;
-}
-
-async function createIntegrationTestFile(workspace: TestWorkspace, baseFileName: string): Promise<string> {
-  const integrationTestFile = path.join(workspace.testDirs.integration, `test_${baseFileName}.py`);
-  await fs.promises.writeFile(integrationTestFile, 'def test_test_function(): pass');
-  return integrationTestFile;
-}
-
 async function verifyActiveEditor(expectedPath: string, message: string): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   assert.ok(activeEditor, 'Active editor should be defined');
   assert.strictEqual(activeEditor.document.uri.fsPath, expectedPath, message);
-}
-
-async function cleanupWorkspace(workspace: TestWorkspace): Promise<void> {
-  await fs.promises.rm(workspace.root, { recursive: true, force: true });
 }
