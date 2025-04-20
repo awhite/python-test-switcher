@@ -44,7 +44,8 @@
     "pretest": "npm run compile",
     "test": "vscode-test",
     "workspace:setup": "ts-node src/test/util/setup-workspace.ts",
-    "workspace:cleanup": "ts-node src/test/util/cleanup-workspace.ts"
+    "workspace:cleanup": "ts-node src/test/util/cleanup-workspace.ts",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",
