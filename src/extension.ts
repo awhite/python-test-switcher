@@ -4,7 +4,7 @@ import { PathService } from './services/pathService';
 import { TestService } from './services/testService';
 import { TestType } from './types';
 
-async function openOrFocusDocument(filePath: string): Promise<void> {
+async function openOrFocusDocument(filePath: string, isTestFile: boolean): Promise<void> {
   const openEditors = vscode.window.visibleTextEditors;
   const existingEditor = openEditors.find(editor => editor.document.uri.fsPath === filePath);
 
@@ -12,7 +12,11 @@ async function openOrFocusDocument(filePath: string): Promise<void> {
     await vscode.window.showTextDocument(existingEditor.document, { viewColumn: existingEditor.viewColumn });
   } else {
     const doc = await vscode.workspace.openTextDocument(filePath);
-    await vscode.window.showTextDocument(doc);
+    if (isTestFile) {
+      await vscode.window.showTextDocument(doc, { viewColumn: vscode.ViewColumn.Beside });
+    } else {
+      await vscode.window.showTextDocument(doc);
+    }
   }
 }
 
@@ -76,7 +80,7 @@ async function handleTestFile(currentFilePath: string, projectRoot: string, path
     return;
   }
 
-  await openOrFocusDocument(implementationPath);
+  await openOrFocusDocument(implementationPath, false);
 }
 
 async function handleImplementationFile(
@@ -96,10 +100,10 @@ async function handleImplementationFile(
     if (choice) {
       const selectedType = testTypes.find((type) => testService.getTestTypeDisplay(type) === choice) as TestType;
       const testPath = await testService.createTestFile(projectRoot, currentFilePath, selectedType);
-      await openOrFocusDocument(testPath);
+      await openOrFocusDocument(testPath, true);
     }
   } else if (testFiles.length === 1) {
-    await openOrFocusDocument(testFiles[0].path);
+    await openOrFocusDocument(testFiles[0].path, true);
   } else {
     const choice = await vscode.window.showQuickPick(
       testFiles.map((f) => testService.getTestTypeDisplay(f.type)),
@@ -109,7 +113,7 @@ async function handleImplementationFile(
     if (choice) {
       const testFile = testFiles.find((f) => testService.getTestTypeDisplay(f.type) === choice);
       if (testFile) {
-        await openOrFocusDocument(testFile.path);
+        await openOrFocusDocument(testFile.path, true);
       }
     }
   }

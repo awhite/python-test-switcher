@@ -208,6 +208,64 @@ suite('Extension Test Suite', () => {
       await cleanupWorkspace(workspace);
     }
   });
+
+  test('Should open test file beside implementation file', async () => {
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
+    const workspace = await setupTestWorkspace();
+    try {
+      const implementationFile = await createImplementationFile(workspace, 'implementation_file');
+      const unitTestFile = await createUnitTestFile(workspace, 'implementation_file');
+
+      // Open the implementation file
+      const doc = await vscode.workspace.openTextDocument(implementationFile);
+      await vscode.window.showTextDocument(doc);
+
+      // Verify we have one editor open initially
+      const initialEditors = vscode.window.visibleTextEditors;
+      assert.strictEqual(initialEditors.length, 1, 'Should have one editor open initially');
+
+      // Toggle to test file
+      await vscode.commands.executeCommand('python-test-switcher.toggleTestAndImplementation');
+
+      // Verify we have two editors open after toggle
+      const editorsAfterToggle = vscode.window.visibleTextEditors;
+      assert.strictEqual(editorsAfterToggle.length, 2, 'Should have two editors open after toggle');
+
+      // Verify left editor is implementation file
+      const leftEditor = editorsAfterToggle.find(e => e.viewColumn === vscode.ViewColumn.One);
+      assert.ok(leftEditor, 'Should have an editor in the left column');
+      assert.strictEqual(
+        leftEditor.document.uri.fsPath,
+        implementationFile,
+        'Left editor should be the implementation file'
+      );
+
+      // Verify right editor is test file
+      const rightEditor = editorsAfterToggle.find(e => e.viewColumn === vscode.ViewColumn.Two);
+      assert.ok(rightEditor, 'Should have an editor in the right column');
+      assert.strictEqual(
+        rightEditor.document.uri.fsPath,
+        unitTestFile,
+        'Right editor should be the test file'
+      );
+
+      // Verify right editor (test file) is focused
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.viewColumn,
+        vscode.ViewColumn.Two,
+        'Right editor should be focused'
+      );
+      assert.strictEqual(
+        vscode.window.activeTextEditor?.document.uri.fsPath,
+        unitTestFile,
+        'Focused editor should be the test file'
+      );
+    } finally {
+      await cleanupWorkspace(workspace);
+    }
+  });
+
   test('Should focus existing editor instead of opening duplicate', async () => {
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 
@@ -270,6 +328,7 @@ suite('Extension Test Suite', () => {
       await cleanupWorkspace(workspace);
     }
   });
+
 });
 
 async function withMockedQuickPick<T extends string>(mockValue: T, callback: () => Promise<void>): Promise<void> {
