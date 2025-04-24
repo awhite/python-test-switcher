@@ -10,7 +10,7 @@
   },
   "displayName": "Python Test Switcher",
   "description": "Switch between Python files and their corresponding test files",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "engines": {
     "vscode": "^1.85.0"
   },
